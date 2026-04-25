@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Background -->
+  <rect width="128" height="128" rx="24" fill="#D4956A"/>
+  <!-- Inner panel -->
+  <rect x="8" y="8" width="112" height="112" rx="18" fill="#FEFAF3"/>
+  <!-- Soil rows (pixel style) -->
+  <rect x="18" y="82" width="92" height="8"  rx="2" fill="#C8A882"/>
+  <rect x="18" y="94" width="92" height="8"  rx="2" fill="#D9BC99"/>
+  <rect x="18" y="106" width="92" height="8" rx="2" fill="#C8A882"/>
+  <!-- Wheat stalk left -->
+  <rect x="36" y="50" width="5" height="32" rx="2" fill="#A8C5A0"/>
+  <ellipse cx="38" cy="46" rx="7" ry="12" fill="#E8C99A" transform="rotate(-10 38 46)"/>
+  <!-- Wheat stalk center -->
+  <rect x="61" y="40" width="6" height="42" rx="2" fill="#A8C5A0"/>
+  <ellipse cx="64" cy="36" rx="8" ry="14" fill="#D4956A" transform="rotate(5 64 36)"/>
+  <!-- Wheat stalk right -->
+  <rect x="87" y="50" width="5" height="32" rx="2" fill="#A8C5A0"/>
+  <ellipse cx="89" cy="46" rx="7" ry="12" fill="#E8C99A" transform="rotate(10 89 46)"/>
+</svg>

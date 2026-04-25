@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FarmCode — My Farm</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="farm.css" />
+</head>
+<body>
+
+  <div class="page-wrapper">
+
+    <!-- ── Left Sidebar ── -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🌾</span>
+        <span class="logo-text">FarmCode</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="farm">
+          <span class="nav-icon">🏡</span>
+          <span>Farm</span>
+        </button>
+        <button class="nav-item" data-tab="stats">
+          <span class="nav-icon">📊</span>
+          <span>Stats</span>
+        </button>
+        <button class="nav-item" data-tab="shop">
+          <span class="nav-icon">🛒</span>
+          <span>Shop</span>
+        </button>
+        <button class="nav-item" data-tab="settings">
+          <span class="nav-icon">⚙️</span>
+          <span>Settings</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-stats">
+        <!-- Coin balance -->
+        <div class="stat-card coin-card">
+          <span class="stat-card-icon">🪙</span>
+          <div class="stat-card-body">
+            <div class="stat-card-val" id="sidebarCoins">0</div>
+            <div class="stat-card-label">Coins</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card-icon">🔥</span>
+          <div class="stat-card-body">
+            <div class="stat-card-val" id="sidebarStreak">0</div>
+            <div class="stat-card-label">Day Streak</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card-icon">⭐</span>
+          <div class="stat-card-body">
+            <div class="stat-card-val" id="sidebarTotal">0</div>
+            <div class="stat-card-label">Problems Solved</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── Right Content Area ── -->
+    <div class="content-area">
+
+      <!-- Tab: Farm -->
+      <div class="tab-panel active" id="tab-farm">
+
+        <div class="topbar">
+          <div class="topbar-left">
+            <h1 class="farm-title">My Farm</h1>
+            <p class="farm-subtitle">Solve a problem, water your crops 🌱</p>
+          </div>
+          <div class="topbar-right">
+            <div class="coin-display" id="coinDisplay">🪙 0 coins</div>
+            <div class="weather-badge">🌤️ Sunny Day +10% Growth</div>
+          </div>
+        </div>
+
+        <!-- Agent message bar (hidden until agent fires) -->
+        <div id="agentMessageBar" style="display:none; align-items:center; gap:8px; background:#FFF3DC; border-radius:12px; padding:10px 16px; margin: 0 16px 8px;">
+          <span>🤖</span>
+          <span id="agentMessageText" style="flex:1; color:#5C4A35; font-size:13px;"></span>
+          <span id="agentMessageClose" style="cursor:pointer; color:#9B8A76; font-size:16px;">✕</span>
+        </div>
+
+        <!-- Farm scene -->
+        <div class="farm-scene" id="farmScene">
+          <img class="farm-bg" src="../assets/farm_pic.png" alt="Farm background" draggable="false" style="pointer-events: none; z-index: 0; position: absolute;" />
+          <!-- Plot overlays — content injected by farm.js -->
+          <div class="farm-plot" data-index="0" style="left:36%; top:33%; z-index: 2;"></div>
+          <div class="farm-plot" data-index="1" style="left:28%; top:47%; z-index: 2;"></div>
+          <div class="farm-plot" data-index="2" style="left:21%; top:61%; z-index: 2;"></div>
+          <div class="farm-plot" data-index="3" style="left:70%; top:36%; z-index: 2;"></div>
+          <div class="farm-plot" data-index="4" style="left:66%; top:50%; z-index: 2;"></div>
+          <div class="farm-plot" data-index="5" style="left:62%; top:65%; z-index: 2;"></div>
+        </div>
+
+      </div>
+
+      <!-- Tab: Stats -->
+      <div class="tab-panel" id="tab-stats">
+        <div class="topbar">
+          <div class="topbar-left">
+            <h1 class="farm-title">Stats</h1>
+            <p class="farm-subtitle">Your solving history</p>
+          </div>
+        </div>
+
+        <!-- Top 3 summary cards -->
+        <div class="stats-top-grid">
+          <div class="stats-big-card">
+            <div class="stats-big-val" id="statsTotalSolved">0</div>
+            <div class="stats-big-label">Total Solved</div>
+          </div>
+          <div class="stats-big-card">
+            <div class="stats-big-val" id="statsStreak">0</div>
+            <div class="stats-big-label">Current Streak</div>
+          </div>
+          <div class="stats-big-card">
+            <div class="stats-big-val" id="statsTotalCoins">0</div>
+            <div class="stats-big-label">Total Coins Earned</div>
+          </div>
+        </div>
+
+        <!-- Difficulty breakdown -->
+        <div class="stats-section">
+          <div class="stats-section-title">Difficulty Breakdown</div>
+          <div class="stats-diff-list">
+            <div class="stats-diff-row">
+              <div class="stats-diff-name easy">Easy</div>
+              <div class="stats-bar-track">
+                <div class="stats-bar-fill easy" id="barEasy" style="width:0%"></div>
+              </div>
+              <div class="stats-diff-count" id="countEasy">0</div>
+            </div>
+            <div class="stats-diff-row">
+              <div class="stats-diff-name medium">Medium</div>
+              <div class="stats-bar-track">
+                <div class="stats-bar-fill medium" id="barMedium" style="width:0%"></div>
+              </div>
+              <div class="stats-diff-count" id="countMedium">0</div>
+            </div>
+            <div class="stats-diff-row">
+              <div class="stats-diff-name hard">Hard</div>
+              <div class="stats-bar-track">
+                <div class="stats-bar-fill hard" id="barHard" style="width:0%"></div>
+              </div>
+              <div class="stats-diff-count" id="countHard">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Farm progress -->
+        <div class="stats-section">
+          <div class="stats-section-title">Farm Progress</div>
+          <div class="stats-farm-grid">
+            <div class="stats-farm-card">
+              <div class="stats-farm-val" id="statsPlanted">0 / 6</div>
+              <div class="stats-farm-label">Plots Planted</div>
+            </div>
+            <div class="stats-farm-card">
+              <div class="stats-farm-val" id="statsHarvests">0</div>
+              <div class="stats-farm-label">Total Harvests</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tab: Shop -->
+      <div class="tab-panel" id="tab-shop">
+        <div class="topbar">
+          <div class="topbar-left">
+            <h1 class="farm-title">Crop Shop</h1>
+            <p class="farm-subtitle">Buy seeds and plant them on your farm</p>
+          </div>
+          <div class="coin-display" id="shopCoinDisplay">🪙 0 coins</div>
+        </div>
+        <!-- Cards rendered by farm.js -->
+        <div class="shop-grid" id="shopContainer"></div>
+      </div>
+
+      <!-- Tab: Settings -->
+      <div class="tab-panel" id="tab-settings">
+        <div class="topbar">
+          <div class="topbar-left">
+            <h1 class="farm-title">Settings</h1>
+            <p class="farm-subtitle">Preferences &amp; AI config</p>
+          </div>
+        </div>
+
+        <div class="settings-list">
+
+          <!-- API Key -->
+          <div class="settings-card">
+            <div class="settings-card-title">AI Analysis</div>
+            <div class="settings-row">
+              <label class="settings-label" for="apiKeyInput">Anthropic API Key</label>
+              <div class="settings-input-row">
+                <input type="password" id="apiKeyInput" class="settings-input" placeholder="sk-ant-..." autocomplete="off" />
+                <button class="settings-btn" id="saveApiKey">Save</button>
+              </div>
+              <div class="settings-feedback" id="apiKeyFeedback"></div>
+            </div>
+          </div>
+
+          <!-- Daily Goal -->
+          <div class="settings-card">
+            <div class="settings-card-title">Daily Goal</div>
+            <div class="settings-row">
+              <label class="settings-label" for="dailyGoalInput">Daily problem goal</label>
+              <div class="settings-input-row">
+                <input type="number" id="dailyGoalInput" class="settings-input settings-input-number" min="1" max="10" value="3" />
+                <button class="settings-btn" id="saveDailyGoal">Save</button>
+              </div>
+              <div class="settings-feedback" id="dailyGoalFeedback"></div>
+            </div>
+          </div>
+
+          <!-- Stealth Mode -->
+          <div class="settings-card">
+            <div class="settings-card-title">Display</div>
+            <div class="settings-row settings-row-toggle">
+              <div>
+                <div class="settings-label">Hide floating button on LeetCode</div>
+                <p class="settings-desc">The FarmCode button will be hidden on LeetCode pages</p>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="stealthModeToggle" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Plot Selector Modal (choose where to plant) -->
+  <div class="modal-overlay" id="plotSelectorModal" style="display:none;" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <button class="modal-close" id="plotSelectorClose" aria-label="Close">✕</button>
+      <h3 class="modal-title" id="selectorTitle">Choose a plot to plant</h3>
+      <p class="modal-desc">Select an empty plot on your farm.</p>
+      <div class="selector-grid" id="plotSelectorGrid"></div>
+      <button class="selector-cancel-btn" id="plotSelectorCancel">Cancel</button>
+    </div>
+  </div>
+
+  <script src="farm.js"></script>
+</body>
+</html>

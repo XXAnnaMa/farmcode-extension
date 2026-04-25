@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FarmCode</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="popup-header">
+    <div class="header-icon">🌾</div>
+    <div class="header-text">
+      <h1 class="header-title">FarmCode</h1>
+      <p class="header-subtitle">Keep farming, keep growing!</p>
+    </div>
+    <div class="streak-badge">
+      <span class="streak-icon">🔥</span>
+      <span class="streak-count" id="streakCount">0</span>
+    </div>
+  </header>
+
+  <!-- Today's Progress -->
+  <section class="progress-section">
+    <h2 class="section-title">Today's Progress</h2>
+    <div class="progress-stats">
+      <div class="stat-card">
+        <div class="stat-number" id="todaySolved">0</div>
+        <div class="stat-label">Today</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-card">
+        <div class="stat-number" id="totalSolved">0</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-card">
+        <div class="stat-number" id="cropsGrown">0</div>
+        <div class="stat-label">Harvested</div>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
+      </div>
+      <span class="progress-bar-label" id="progressLabel">0 / 3 daily goal</span>
+    </div>
+  </section>
+
+  <!-- Farm Mini Preview -->
+  <section class="farm-preview-section">
+    <h2 class="section-title">My Farm</h2>
+    <div class="farm-mini-grid" id="farmMiniGrid">
+      <!-- 6 mini plots rendered by JS -->
+    </div>
+  </section>
+
+  <!-- Quick Actions -->
+  <section class="actions-section">
+    <button class="action-btn primary" id="openFarmBtn">
+      <span class="btn-icon">🏡</span>
+      <span>Open Farm</span>
+    </button>
+    <button class="action-btn secondary" id="openLeetCodeBtn">
+      <span class="btn-icon">💻</span>
+      <span>Go Solve</span>
+    </button>
+  </section>
+
+  <script src="popup.js"></script>
+</body>
+</html>

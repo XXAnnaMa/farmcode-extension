@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "FarmCode",
+  "version": "1.0.0",
+  "description": "Turn your LeetCode grind into a cozy farm adventure 🌾",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "FarmCode"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://leetcode.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": [
+    "storage",
+    "tabs",
+    "alarms",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://api.anthropic.com/*",
+    "https://leetcode.com/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "farm/farm.html",
+        "assets/farm_pic.png",
+        "assets/crops/icon_float.png",
+        "assets/crops/seed.png",
+        "assets/crops/strawberry.png",
+        "assets/crops/sunflower.png",
+        "assets/crops/wheat.png"
+      ],
+      "matches": ["https://leetcode.com/*", "chrome-extension://*/*", "<all_urls>"]
+    }
+  ]
+}
