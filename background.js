@@ -38,10 +38,12 @@ const DEFAULT_STATE = {
 // Uses a single atomic set() (no clear()) to avoid the race where
 // the SW is killed between clear() and the follow-up set().
 chrome.storage.local.get(['dataVersion'], (result) => {
+  if (chrome.runtime.lastError) return;
   if (result.dataVersion === '2.0') return;
   console.log('FarmCode: upgrading storage to v2.0');
   chrome.storage.local.set({ dataVersion: '2.0', farmData: DEFAULT_STATE }, () => {
-    console.log('FarmCode: storage reset to v2.0 complete');
+    if (chrome.runtime.lastError) console.warn('FarmCode: storage upgrade failed', chrome.runtime.lastError);
+    else console.log('FarmCode: storage reset to v2.0 complete');
   });
 });
 
@@ -143,7 +145,7 @@ async function handleAgentDecision(decision, data) {
     iconUrl: 'icons/icon48.png',
     title:   'FarmCode 🌾',
     message,
-  });
+  }, () => { if (chrome.runtime.lastError) console.warn('FarmCode: notification error', chrome.runtime.lastError); });
 
   // Persist message into farmData so farm.html can show the agent bar
   const updated = { ...(data ?? DEFAULT_STATE), agentMessage: message, agentStatus: decision.status ?? 'hint' };
@@ -154,65 +156,105 @@ async function handleAgentDecision(decision, data) {
   chrome.runtime.sendMessage({ type: 'FARM_UPDATE' }).catch(() => {});
 }
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  console.log('FarmCode background received:', msg.type);
+// ── PROBLEM_SOLVED logic extracted for async/await ──────
+async function handleProblemSolved(message) {
+  const result = await new Promise((resolve) =>
+    chrome.storage.local.get(['farmData'], resolve)
+  );
 
-  if (msg.type === 'OPEN_FARM') {
+  const data = result.farmData
+    ? JSON.parse(JSON.stringify(result.farmData))
+    : JSON.parse(JSON.stringify(DEFAULT_STATE));
+
+  if (!data.plots || data.plots.length < 6) {
+    data.plots = Array.from({ length: 6 }, (_, i) =>
+      data.plots?.[i] || { id: i, crop: null, stage: 0, plantedAt: null, lastWateredDate: '' }
+    );
+  }
+
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const yesterdayDate = new Date(now);
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = yesterdayDate.toISOString().slice(0, 10);
+
+  // ── Coins & difficulty counters ──────────────────────
+  const reward = COIN_REWARDS[message.difficulty] ?? 1;
+  data.coins           += reward;
+  data.totalCoinsEarned = (data.totalCoinsEarned ?? 0) + reward;
+  data.totalSolved      += 1;
+  if (!data.difficultyCount) data.difficultyCount = { Easy: 0, Medium: 0, Hard: 0 };
+  data.difficultyCount[message.difficulty] = (data.difficultyCount[message.difficulty] || 0) + 1;
+
+  // ── Streak ───────────────────────────────────────────
+  console.log('STREAK BEFORE:', {
+    lastSolvedDate: data.lastSolvedDate,
+    today,
+    yesterday,
+    streak: data.streak,
+  });
+
+  if (data.lastSolvedDate === yesterday) {
+    data.streak += 1;
+  } else if (data.lastSolvedDate !== today) {
+    data.streak = 1;
+  }
+
+  console.log('STREAK AFTER:', data.streak);
+  data.lastSolvedDate = today;
+
+  // ── Water all planted plots (once per day) ───────────
+  data.plots.forEach((plot) => {
+    if (plot.crop && plot.stage !== -1 && plot.lastWateredDate !== today) {
+      if (plot.stage !== undefined) {
+        if (plot.stage < 4) plot.stage += 1;
+      } else {
+        plot.waterings += 1; // legacy format
+      }
+      plot.lastWateredDate = today;
+    }
+  });
+
+  await new Promise((resolve, reject) => {
+    chrome.storage.local.set({ farmData: data }, () => {
+      if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+      else resolve();
+    });
+  });
+
+  console.log('FarmCode: Saved — coins:', data.coins, 'streak:', data.streak);
+  return { coins: data.coins };
+}
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  console.log('FarmCode background received:', message.type);
+
+  if (message.type === 'PROBLEM_SOLVED') {
+    handleProblemSolved(message)
+      .then((result) => sendResponse({ success: true, coins: result.coins }))
+      .catch((e) => {
+        console.warn('FarmCode: handleProblemSolved error', e);
+        sendResponse({ success: false });
+      });
+    return true; // keep message channel open for async response
+  }
+
+  if (message.type === 'SHOW_NOTIFICATION') {
+    chrome.notifications.create({
+      type:    'basic',
+      iconUrl: 'icons/icon48.png',
+      title:   'FarmCode 🌾',
+      message: message.message,
+    }, () => { if (chrome.runtime.lastError) console.warn('FarmCode: notification error', chrome.runtime.lastError); });
+    sendResponse({ success: true });
+    return true;
+  }
+
+  if (message.type === 'OPEN_FARM') {
     chrome.tabs.create({ url: chrome.runtime.getURL('farm/farm.html') });
     sendResponse({ success: true });
-    return false;
+    return true;
   }
 
-  if (msg.type === 'PROBLEM_SOLVED') {
-    chrome.storage.local.get(['farmData'], (result) => {
-      const data = result.farmData
-        ? JSON.parse(JSON.stringify(result.farmData)) // deep clone
-        : JSON.parse(JSON.stringify(DEFAULT_STATE));
-
-      // Ensure plots array is initialised (migration safety)
-      if (!data.plots || data.plots.length < 6) {
-        data.plots = Array.from({ length: 6 }, (_, i) =>
-          data.plots?.[i] || { id: i, crop: null, stage: 0, plantedAt: null, lastWateredDate: '' }
-        );
-      }
-
-      const today = new Date().toISOString().slice(0, 10);
-
-      // ── Coins & difficulty counters ────────────────────
-      const reward = COIN_REWARDS[msg.difficulty] ?? 1;
-      data.coins           += reward;
-      data.totalCoinsEarned = (data.totalCoinsEarned ?? 0) + reward;
-      data.totalSolved      += 1;
-      if (!data.difficultyCount) data.difficultyCount = { Easy: 0, Medium: 0, Hard: 0 };
-      data.difficultyCount[msg.difficulty] = (data.difficultyCount[msg.difficulty] || 0) + 1;
-
-      // ── Streak ─────────────────────────────────────────
-      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-      if (data.lastSolvedDate === yesterday) {
-        data.streak += 1;
-      } else if (data.lastSolvedDate !== today) {
-        data.streak = 1; // reset on gap
-      }
-      // If lastSolvedDate === today, streak stays the same
-      data.lastSolvedDate = today;
-
-      // ── Water all planted plots (once per day) ──────────
-      data.plots.forEach((plot) => {
-        if (plot.crop && plot.lastWateredDate !== today) {
-          if (plot.stage !== undefined) {
-            if (plot.stage < 4) plot.stage += 1;
-          } else {
-            plot.waterings += 1; // legacy format
-          }
-          plot.lastWateredDate = today;
-        }
-      });
-
-      chrome.storage.local.set({ farmData: data }, () => {
-        console.log('FarmCode: Saved — coins:', data.coins, 'streak:', data.streak);
-        sendResponse({ success: true, coins: data.coins });
-      });
-    });
-    return true; // keep async channel open
-  }
+  return true;
 });

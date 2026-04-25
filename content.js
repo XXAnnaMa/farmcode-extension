@@ -22,6 +22,14 @@ window.farmDebug = function () {
 (function () {
   'use strict';
 
+  function isExtensionContextValid() {
+    try {
+      return !!(chrome?.runtime?.id);
+    } catch (e) {
+      return false;
+    }
+  }
+
   const ICON_URL     = chrome.runtime.getURL('assets/crops/icon_float.png');
   const FARM_PAGE_URL = chrome.runtime.getURL('farm/farm.html');
   console.log('FarmCode icon URL:', ICON_URL);
@@ -251,15 +259,18 @@ window.farmDebug = function () {
   }
 
   // ── Stealth mode: apply on load and react to changes ───
-  chrome.storage.local.get(['stealthMode'], (result) => {
-    if (result.stealthMode) btn.style.display = 'none';
-  });
+  if (chrome.runtime?.id) {
+    chrome.storage.local.get(['stealthMode'], (result) => {
+      if (chrome.runtime.lastError) return;
+      if (result.stealthMode) btn.style.display = 'none';
+    });
 
-  chrome.storage.onChanged.addListener((changes) => {
-    if (changes.stealthMode) {
-      btn.style.display = changes.stealthMode.newValue ? 'none' : 'flex';
-    }
-  });
+    chrome.storage.onChanged.addListener((changes) => {
+      if (changes.stealthMode) {
+        btn.style.display = changes.stealthMode.newValue ? 'none' : 'flex';
+      }
+    });
+  }
 
   // ── Submission detection ────────────────────────────────
 
@@ -276,20 +287,13 @@ window.farmDebug = function () {
   }
 
   function onProblemSolved(difficulty) {
-    // Guard: extension context may be invalid after reload
-    if (!chrome.runtime?.id) {
-      console.warn('FarmCode: extension context invalid, skipping');
+    if (!isExtensionContextValid()) {
+      observer.disconnect();
       return;
     }
-
-    // Deduplicate: title + date → one record per problem per day
     const solvedKey = `${document.title}_${new Date().toDateString()}`;
-    if (sessionStorage.getItem(solvedKey)) {
-      console.log('FarmCode: already recorded today, skipping', solvedKey);
-      return;
-    }
+    if (sessionStorage.getItem(solvedKey)) return;
     sessionStorage.setItem(solvedKey, '1');
-
     const cropMap = { Easy: 'strawberry', Medium: 'sunflower', Hard: 'wheat' };
     const msg = {
       type: 'PROBLEM_SOLVED',
@@ -300,20 +304,29 @@ window.farmDebug = function () {
     };
     console.log('FarmCode: Sending message', msg);
     try {
-      chrome.runtime.sendMessage(msg);
+      chrome.runtime.sendMessage(msg, (response) => {
+        if (chrome.runtime.lastError) {
+          console.warn('FarmCode: sendMessage error', chrome.runtime.lastError.message);
+        }
+      });
     } catch (e) {
-      console.warn('FarmCode: context invalidated while sending', e);
+      console.warn('FarmCode: sendMessage failed', e.message);
+      observer.disconnect();
     }
   }
 
   // ── Accepted detection — uses confirmed selector ────────
 
   const observer = new MutationObserver(() => {
+    if (!isExtensionContextValid()) {
+      observer.disconnect();
+      return;
+    }
     const greenParent = document.querySelector('[class*="text-green-s"]');
     if (greenParent && greenParent.textContent.includes('Accepted')) {
       const difficulty = getDifficulty();
       console.log('FarmCode: Detected Accepted!', difficulty);
-      onProblemSolved(difficulty); // dedup guard is inside onProblemSolved
+      onProblemSolved(difficulty);
     }
   });
 
@@ -326,17 +339,14 @@ window.farmDebug = function () {
 
   let lastUrl = location.href;
   const urlInterval = setInterval(() => {
-    try {
-      if (!chrome.runtime?.id) {
-        clearInterval(urlInterval);
-        return;
-      }
-      if (location.href !== lastUrl) {
-        lastUrl = location.href;
-        console.log('FarmCode: URL changed', lastUrl);
-      }
-    } catch (e) {
+    if (!isExtensionContextValid()) {
       clearInterval(urlInterval);
+      observer.disconnect();
+      return;
+    }
+    if (location.href !== lastUrl) {
+      lastUrl = location.href;
+      console.log('FarmCode: URL changed', lastUrl);
     }
   }, 1000);
 

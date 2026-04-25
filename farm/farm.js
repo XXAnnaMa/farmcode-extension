@@ -57,15 +57,31 @@ let pendingGrowthIds = new Set();
 
 // Advances stage for each eligible plot. Returns array of plot IDs that grew.
 function checkCropGrowth(plots, todayStr) {
-  const grew = [];
+  const grew     = [];
+  const withered = [];
+
   plots.forEach((plot) => {
-    if (!plot.crop || plot.stage >= 4) return;
-    if (plot.lastWateredDate === todayStr) return; // already grew today
-    plot.stage = Math.min(4, (plot.stage ?? 1) + 1);
-    plot.lastWateredDate = todayStr;
-    grew.push(plot.id);
+    if (!plot.crop || plot.stage === 0 || plot.stage === 4) return;
+    if (plot.stage === -1) return; // already withered
+
+    const lastWatered = plot.lastWateredDate
+      ? new Date(plot.lastWateredDate)
+      : new Date(plot.plantedAt);
+    const today = new Date(todayStr);
+    const daysSinceWatered = Math.floor((today - lastWatered) / (1000 * 60 * 60 * 24));
+
+    if (daysSinceWatered > 1) {
+      plot.stage      = -1;
+      plot.witheredAt = Date.now();
+      withered.push(plot.id);
+    } else if (plot.lastWateredDate !== todayStr) {
+      plot.stage           = Math.min(4, (plot.stage ?? 1) + 1);
+      plot.lastWateredDate = todayStr;
+      grew.push(plot.id);
+    }
   });
-  return grew;
+
+  return { grew, withered };
 }
 
 // ── Render helpers ───────────────────────────────────────
@@ -157,6 +173,42 @@ function renderPlot(plot, index) {
       white-space: nowrap;
     `;
     plotEl.appendChild(label);
+    return;
+  }
+
+  // ── Withered plot ─────────────────────────────────────
+  if (plot.stage === -1) {
+    const img = document.createElement('img');
+    img.src = chrome.runtime.getURL('assets/crops/seed_withered.png');
+    img.style.cssText = `
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      display: block;
+      pointer-events: none;
+    `;
+    plotEl.appendChild(img);
+
+    const btn = document.createElement('button');
+    btn.className = 'plot-clear-btn';
+    btn.textContent = 'Clear';
+    btn.style.cssText = `
+      position: absolute;
+      left: calc(50% + 30px);
+      top: 50%;
+      transform: translateY(-50%);
+      background: #9B8A76;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 2px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      z-index: 10;
+    `;
+    plotEl.appendChild(btn);
     return;
   }
 
@@ -415,9 +467,20 @@ function harvestCrop(plotIndex) {
   }
 }
 
+function clearWitheredCrop(plotIndex) {
+  farmData.plots[plotIndex] = {
+    id: plotIndex, crop: null, stage: 0, plantedAt: null, lastWateredDate: '',
+  };
+  saveAndRender();
+}
+
 function saveAndRender() {
   if (!chrome.runtime?.id) return;
   chrome.storage.local.set({ farmData }, () => {
+    if (chrome.runtime.lastError) {
+      console.warn('FarmCode: save error', chrome.runtime.lastError);
+      return;
+    }
     renderCoins();
     renderStats();
     renderPlots();
@@ -454,12 +517,18 @@ function loadFarm() {
       const solvedToday   = farmData.lastSolvedDate === todayStr;
       const firstOpenToday = (farmData.lastLoginDate ?? '') !== todayStr;
 
-      if (solvedToday && firstOpenToday) {
-        const grew = checkCropGrowth(farmData.plots, todayStr);
+      if (firstOpenToday) {
+        const { grew, withered } = checkCropGrowth(farmData.plots, todayStr);
         farmData.lastLoginDate = todayStr;
         pendingGrowthIds = new Set(grew);
-        if (grew.length > 0 || firstOpenToday) {
+        if (grew.length > 0 || withered.length > 0) {
           chrome.storage.local.set({ farmData });
+        }
+        if (withered.length > 0) {
+          chrome.runtime.sendMessage({
+            type:    'SHOW_NOTIFICATION',
+            message: `${withered.length} crop(s) withered from neglect. Keep your streak alive!`,
+          }).catch(() => {});
         }
       } else {
         pendingGrowthIds = new Set();
@@ -514,7 +583,7 @@ window.addEventListener('load', () => {
   // ── Settings event listeners ───────────────────────────
   document.getElementById('saveApiKey')?.addEventListener('click', () => {
     const val = document.getElementById('apiKeyInput').value.trim();
-    if (!val) return;
+    if (!val || !chrome.runtime?.id) return;
     chrome.storage.local.set({ apiKey: val }, () => {
       document.getElementById('apiKeyInput').value = '';
       document.getElementById('apiKeyInput').placeholder = val.slice(0, 8) + '••••••••';
@@ -524,7 +593,7 @@ window.addEventListener('load', () => {
 
   document.getElementById('saveDailyGoal')?.addEventListener('click', () => {
     const val = parseInt(document.getElementById('dailyGoalInput').value);
-    if (isNaN(val) || val < 1 || val > 10) return;
+    if (isNaN(val) || val < 1 || val > 10 || !chrome.runtime?.id) return;
     chrome.storage.local.get(['farmData'], (result) => {
       const data = result.farmData ?? farmData;
       data.dailyGoal = val;
@@ -535,6 +604,7 @@ window.addEventListener('load', () => {
   });
 
   document.getElementById('stealthModeToggle')?.addEventListener('change', (e) => {
+    if (!chrome.runtime?.id) return;
     const enabled = e.target.checked;
     chrome.storage.local.set({ stealthMode: enabled });
   });
@@ -560,6 +630,10 @@ window.addEventListener('load', () => {
         e.target.textContent = 'Harvested!';
         e.target.style.background = '#A8C5A0';
         setTimeout(() => harvestCrop(index), 500);
+      }
+      if (e.target.classList.contains('plot-clear-btn')) {
+        const index = parseInt(e.target.closest('.farm-plot').dataset.index);
+        clearWitheredCrop(index);
       }
     });
 
