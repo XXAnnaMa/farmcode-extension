@@ -3,6 +3,11 @@
 const COIN_REWARDS  = { Easy: 1, Medium: 3, Hard: 5 };
 const HARVEST_BONUS = 5;
 
+// ── Date helper (local time, not UTC) ───────────────────
+function getLocalDateStr(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
 // ── Storage helpers ─────────────────────────────────────
 function getStorage() {
   return new Promise((resolve) => {
@@ -70,7 +75,7 @@ async function runAgent() {
 
     const data = stored.farmData ?? DEFAULT_STATE;
     const hour = new Date().getHours();
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getLocalDateStr();
     const solvedToday  = data.lastSolvedDate === todayStr ? 1 : 0;
     const dailyGoal    = data.dailyGoal ?? 3;
     const streak       = data.streak ?? 0;
@@ -172,11 +177,10 @@ async function handleProblemSolved(message) {
     );
   }
 
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const yesterdayDate = new Date(now);
+  const today = getLocalDateStr();
+  const yesterdayDate = new Date();
   yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-  const yesterday = yesterdayDate.toISOString().slice(0, 10);
+  const yesterday = getLocalDateStr(yesterdayDate);
 
   // ── Coins & difficulty counters ──────────────────────
   const reward = COIN_REWARDS[message.difficulty] ?? 1;
@@ -215,6 +219,11 @@ async function handleProblemSolved(message) {
     }
   });
 
+  console.log('Saving farmData:', {
+    coins: data.coins,
+    totalSolved: data.totalSolved,
+    streak: data.streak,
+  });
   await new Promise((resolve, reject) => {
     chrome.storage.local.set({ farmData: data }, () => {
       if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
@@ -223,6 +232,7 @@ async function handleProblemSolved(message) {
   });
 
   console.log('FarmCode: Saved — coins:', data.coins, 'streak:', data.streak);
+  chrome.runtime.sendMessage({ type: 'FARM_UPDATE' }).catch(() => {});
   return { coins: data.coins };
 }
 

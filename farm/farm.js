@@ -37,6 +37,11 @@ const STAGE_LABEL = {
   4: 'Ready to harvest! ✨',
 };
 
+// ── Date helper (local time, not UTC) ───────────────────
+function getLocalDateStr(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
 // ── State ────────────────────────────────────────────────
 
 let farmData = {
@@ -61,8 +66,25 @@ function checkCropGrowth(plots, todayStr) {
   const withered = [];
 
   plots.forEach((plot) => {
-    if (!plot.crop || plot.stage === 0 || plot.stage === 4) return;
+    if (!plot.crop || plot.stage === 0) return;
     if (plot.stage === -1) return; // already withered
+
+    // ── Mature crop: check for overdue harvest ─────────
+    if (plot.stage === 4) {
+      if (!plot.maturedAt) {
+        plot.maturedAt = Date.now();
+      } else {
+        const daysSinceMatured = Math.floor(
+          (Date.now() - plot.maturedAt) / (1000 * 60 * 60 * 24)
+        );
+        if (daysSinceMatured >= 3) {
+          plot.stage     = -1;
+          plot.maturedAt = null;
+          withered.push(plot.id);
+        }
+      }
+      return; // mature crops don't grow further
+    }
 
     const lastWatered = plot.lastWateredDate
       ? new Date(plot.lastWateredDate)
@@ -279,6 +301,26 @@ function renderPlot(plot, index) {
       transition: background 0.15s, transform 0.15s;
     `;
     plotEl.appendChild(btn);
+    if (plot.maturedAt) {
+      const daysLeft = Math.max(0, 3 - Math.floor(
+        (Date.now() - plot.maturedAt) / (1000 * 60 * 60 * 24)
+      ));
+      const timeLabel = document.createElement('div');
+      timeLabel.textContent = `⏰ ${daysLeft} day(s)`;
+      timeLabel.style.cssText = `
+        position: absolute;
+        left: calc(50% + 30px);
+        top: calc(50% - 22px);
+        transform: translateX(0);
+        color: #5C5C5C;
+        font-size: 9px;
+        font-weight: 600;
+        white-space: nowrap;
+        z-index: 10;
+        pointer-events: none;
+      `;
+      plotEl.appendChild(timeLabel);
+    }
   }
 }
 
@@ -421,7 +463,7 @@ function openPlotSelector(cropKey) {
 function plantCrop(cropKey, plotIndex) {
   if (farmData.coins < CROPS_META[cropKey].price) return;
   farmData.coins -= CROPS_META[cropKey].price;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateStr();
   farmData.plots[plotIndex] = {
     id: plotIndex,
     crop: cropKey,
@@ -513,8 +555,7 @@ function loadFarm() {
       }
 
       // ── Daily growth check ─────────────────────────────
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const solvedToday   = farmData.lastSolvedDate === todayStr;
+      const todayStr = getLocalDateStr();
       const firstOpenToday = (farmData.lastLoginDate ?? '') !== todayStr;
 
       if (firstOpenToday) {
@@ -524,10 +565,19 @@ function loadFarm() {
         if (grew.length > 0 || withered.length > 0) {
           chrome.storage.local.set({ farmData });
         }
+        if (grew.length > 0) {
+          const justMatured = grew.filter(id => farmData.plots[id]?.stage === 4);
+          if (justMatured.length > 0) {
+            chrome.runtime.sendMessage({
+              type:    'SHOW_NOTIFICATION',
+              message: `${justMatured.length} crop(s) are ready to harvest! Don't wait too long 🌟`,
+            }).catch(() => {});
+          }
+        }
         if (withered.length > 0) {
           chrome.runtime.sendMessage({
             type:    'SHOW_NOTIFICATION',
-            message: `${withered.length} crop(s) withered from neglect. Keep your streak alive!`,
+            message: `${withered.length} crop(s) have withered! Clear them and plant again 🥀`,
           }).catch(() => {});
         }
       } else {
@@ -575,6 +625,23 @@ try {
   });
 } catch (e) {
   console.warn('FarmCode: could not register message listener', e);
+}
+
+try {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.farmData) {
+      console.log('storage changed, new coins:', changes.farmData.newValue?.coins);
+      console.log('storage changed, new totalSolved:', changes.farmData.newValue?.totalSolved);
+      console.log('storage changed, new streak:', changes.farmData.newValue?.streak);
+      farmData = changes.farmData.newValue;
+      renderCoins();
+      renderStats();
+      renderPlots();
+      renderAgentMessage();
+    }
+  });
+} catch (e) {
+  console.warn('FarmCode: could not register storage listener', e);
 }
 
 // ── Init ─────────────────────────────────────────────────
