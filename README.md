@@ -1,54 +1,56 @@
-# 🌾 FarmCode
+# 🌾 FarmCode — LeetCode Farm
 
 > Turn your LeetCode grind into a cozy farm adventure.
 
-FarmCode is a Chrome Extension that gamifies LeetCode practice through an isometric farm simulation. Solve problems, earn coins, grow crops — and let an AI Agent keep you accountable.
-
-![Farm View](assets/farm_pic.png)
+FarmCode is a Chrome Extension that gamifies LeetCode practice through a farm simulation. Solve problems, earn coins, buy seeds, and watch your crops grow — powered by an AI Agent that monitors your progress and intervenes when you need a nudge.
 
 ---
 
 ## ✨ Features
 
 ### 🌱 Farm Simulation
-- Isometric hand-drawn farm with 6 crop plots
-- 4 crop types: Strawberry 🍓 · Sunflower 🌻 · Wheat 🌾 · Lucky Clover 🍀
-- Multi-stage growth: Seed → Sprout → Growing → Mature
-- Crops wither if not harvested within 3 days — stay on top of your farm!
-- Neglect your daily goal and crops wilt 🥀
+- Isometric hand-drawn farm view with 6 crop plots
+- 4 crop types with unique growth timelines:
+
+| Crop | Cost | Days to Harvest | Difficulty |
+|------|------|----------------|------------|
+| 🍓 Strawberry | 5 coins | 2 days | Easy |
+| 🌻 Sunflower | 15 coins | 3 days | Medium |
+| 🌾 Wheat | 30 coins | 5 days | Hard |
+| 🍀 Lucky Clover | 50 coins | 7 days | Rare |
+
+- Multi-stage growth: Seed → Sprout → Growing → Mature → Harvest
+- Crops wither if not harvested within 3 days of maturity
+- Neglected crops wither after missing daily check-ins
+- Harvest countdown timer displayed on mature crops
 
 ### 🪙 Coin Economy
-| Difficulty | Coins Earned |
-|-----------|-------------|
-| Easy | +1 🪙 |
-| Medium | +3 🪙 |
-| Hard | +5 🪙 |
-
-- Spend coins in the **Crop Shop** to buy seeds
+- Easy problem = 1 coin · Medium = 3 coins · Hard = 5 coins
+- Spend coins in the Crop Shop to buy seeds
 - Harvest mature crops for bonus coins
-- Daily streaks keep your farm healthy
+- Daily streak bonus rewards consistent practice
 
-### 🤖 AI Learning Agent
-Runs every 30 minutes with an **observe → reason → intervene** loop:
-
-```
-OBSERVE   →  today's solves, time of day, streak, daily goal
-REASON    →  Claude API classifies: on_track / procrastinating / behind_schedule / completed
-INTERVENE →  system notification + in-app farm message
-```
-
-- Powered by Claude API (bring your own key — costs < $0.001 per check)
-- Personalized messages based on your actual progress
+### 🤖 AI Agent (observe → reason → intervene)
+- Runs every 30 minutes in the background
+- Monitors time of day, daily goal progress, and streak data
+- Classifies user status: `on_track` / `procrastinating` / `behind_schedule` / `completed`
+- Delivers personalized interventions via:
+  - System notifications
+  - In-app farm message bar
+  - Farm visual updates (crop withering)
+- Powered by Claude API (bring your own key, ~$0.001 per check)
 
 ### 📊 Stats Dashboard
 - Total problems solved with Easy / Medium / Hard breakdown
-- Current streak tracker
-- Farm progress overview
+- Current streak and total coins earned
+- Harvest count and farm progress tracking
+- Visual progress bars for difficulty distribution
 
 ### 🔒 Privacy First
 - Zero server-side storage — all data lives in your browser
-- API key stored locally via `chrome.storage.local`
-- Submission data never leaves your device
+- Your API key stored locally via `chrome.storage.local`
+- LeetCode submission detection via DOM monitoring (no account access needed)
+- Data never leaves your device
 
 ---
 
@@ -57,10 +59,11 @@ INTERVENE →  system notification + in-app farm message
 | Layer | Technology |
 |-------|-----------|
 | Extension | Chrome Extension Manifest V3 |
-| Frontend | Vanilla JS · HTML · CSS |
+| Frontend | Vanilla JS, HTML, CSS |
 | AI Agent | Anthropic Claude API (claude-haiku) |
 | Storage | chrome.storage.local |
-| Background | Service Worker · chrome.alarms · chrome.notifications |
+| Background | Service Worker (chrome.alarms, chrome.notifications) |
+| Architecture | Content Script ↔ Service Worker ↔ Extension Page |
 
 ---
 
@@ -68,71 +71,95 @@ INTERVENE →  system notification + in-app farm message
 
 ### Install (Developer Mode)
 
+1. Clone this repository
 ```bash
 git clone https://github.com/XXAnnaMa/farmcode-extension.git
 ```
 
-1. Open Chrome → `chrome://extensions/`
-2. Enable **Developer Mode** (top right)
-3. Click **Load unpacked** → select the `farmcode-extension` folder
-4. Open any LeetCode problem — the 🌾 floating button appears in the bottom right
+2. Open Chrome and go to `chrome://extensions/`
+3. Enable **Developer Mode** (top right toggle)
+4. Click **Load unpacked** and select the `farmcode-extension` folder
+5. Open any LeetCode problem — the 🌾 floating button will appear
 
-### First-Time Setup
+### Setup
 
-1. Click the floating 🌾 button on LeetCode
+1. Click the floating button on LeetCode to open your farm
 2. Go to **Settings** tab
-3. Enter your [Anthropic API Key](https://console.anthropic.com)
+3. Enter your Anthropic API Key
 4. Set your daily problem goal
-5. Start solving — your farm grows with you!
+5. Start solving — every Accepted submission plants a seed 🌱
 
 ---
 
-## 🏗 Architecture
+## 🤖 AI Agent Architecture
+
+Every 30 minutes:
+
+```
+OBSERVE   →  Today's solved count, current time, streak, daily goal, farm state
+    ↓
+REASON    →  Claude API classifies status + selects intervention strategy
+    ↓
+INTERVENE →  System notification + in-app message bar + farm visual feedback
+```
+
+| Status | Condition | Action |
+|--------|-----------|--------|
+| `on_track` | Meeting daily goal | No interruption |
+| `procrastinating` | Late in day, no problems solved | Warning notification |
+| `behind_schedule` | Significantly behind goal | Strong nudge + farm alert |
+| `completed` | Daily goal met | Celebration message |
+
+---
+
+## 🌱 Crop Lifecycle
+
+```
+Buy Seed → Plant → Daily Check-in Waters Crops → Mature → Harvest (within 3 days)
+                                                              ↓
+                                             Miss harvest → Wither → Clear & Replant
+```
+
+- Miss a daily check-in → crops stop growing
+- Miss 2+ days → crops wither (withered image shown, Clear button appears)
+- Mature crops not harvested within 3 days → also wither
+- Harvest countdown: ⏰ 3d → 2d → 1d → wither
+
+---
+
+## 📁 Project Structure
 
 ```
 farmcode-extension/
-├── manifest.json         # MV3 configuration
-├── background.js         # Service worker + AI Agent engine
-├── content.js            # LeetCode DOM monitor + floating panel
+├── manifest.json         # MV3 config, permissions, CSP
+├── background.js         # Service worker + AI Agent (runs every 30min)
+├── content.js            # LeetCode DOM monitor + floating button + iframe panel
 ├── farm/
-│   ├── farm.html         # Main UI (farm, shop, stats, settings)
-│   ├── farm.css
-│   └── farm.js           # Farm logic, growth system, shop, agent display
+│   ├── farm.html         # Main farm UI (Farm, Shop, Stats, Settings tabs)
+│   ├── farm.css          # Warm cream aesthetic styling
+│   └── farm.js           # Farm logic, shop, stats, crop lifecycle
 ├── assets/
-│   ├── farm_pic.png      # Isometric farm background (AI-generated)
-│   └── crops/            # Crop sprites (seed, mature, withered states)
+│   ├── farm_pic.png      # Isometric hand-drawn farm background
+│   └── crops/            # Crop sprites (seed, strawberry, sunflower, wheat, clover, withered)
 └── popup/
     └── popup.html        # Extension toolbar popup
 ```
 
 ---
 
-## 🤖 AI Agent Design
-
-The agent follows a minimal, cost-efficient architecture:
-
-- **Model**: `claude-haiku` — fast and cheap (~$0.001/check)
-- **Frequency**: Every 30 minutes via `chrome.alarms`
-- **Input context**: time of day · solves today · daily goal · streak · growing crops
-- **Output**: JSON with `status`, `action`, `message`
-- **Actions**: `none` · `show_hint` · `show_warning`
-
-This design keeps API costs under $1/month for active users.
-
----
-
 ## 🗺 Roadmap
 
-- [x] Real-time LeetCode submission detection via DOM monitoring
-- [x] Coin economy + crop shop
-- [x] Multi-stage crop growth with daily check-ins
-- [x] Crop wither system (neglect penalty)
-- [x] Harvest timeout (3-day countdown)
-- [x] AI Agent (observe → reason → intervene)
+- [x] LeetCode submission detection via DOM monitoring
+- [x] Coin economy (Easy/Medium/Hard difficulty tiers)
+- [x] Crop shop with 4 crop types
+- [x] Multi-stage crop growth system
+- [x] Crop wither & harvest timeout mechanics
+- [x] AI Agent with observe → reason → intervene loop
 - [x] Stats dashboard with difficulty breakdown
-- [x] Streak tracking with timezone-aware date logic
+- [x] Daily streak tracking with timezone-aware logic
+- [x] System notifications for Agent interventions
 - [ ] Friend system with Firebase (water / steal crops)
-- [ ] Chrome Web Store release
+- [ ] Chrome Web Store public release
 
 ---
 
