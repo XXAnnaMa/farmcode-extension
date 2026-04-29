@@ -159,7 +159,7 @@ farmcode-extension/
 - [x] Daily streak tracking with timezone-aware logic
 - [x] System notifications for Agent interventions
 - [ ] Friend system with Firebase (water / steal crops)
-- [ ] Chrome Web Store public release
+- [x] Chrome Web Store public release
 
 ---
 

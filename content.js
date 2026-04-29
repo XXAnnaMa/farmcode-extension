@@ -30,9 +30,7 @@ window.farmDebug = function () {
     }
   }
 
-  const ICON_URL     = chrome.runtime.getURL('assets/crops/icon_float.png');
   const FARM_PAGE_URL = chrome.runtime.getURL('farm/farm.html');
-  console.log('FarmCode icon URL:', ICON_URL);
 
   // ── Floating button ─────────────────────────────────────
 
@@ -59,7 +57,7 @@ window.farmDebug = function () {
   });
 
   const icon = document.createElement('img');
-  icon.src = ICON_URL;
+  icon.src = chrome.runtime.getURL('assets/crops/icon_float.png');
   icon.alt = 'FarmCode';
   Object.assign(icon.style, {
     width:         '56px',
@@ -69,13 +67,6 @@ window.farmDebug = function () {
     pointerEvents: 'none',
     userSelect:    'none',
   });
-
-  icon.addEventListener('error', () => {
-    console.warn('FarmCode: icon_float.png failed to load, using emoji fallback');
-    icon.style.display = 'none';
-    btn.textContent = '🌱';
-  });
-
   btn.appendChild(icon);
 
   btn.addEventListener('mouseenter', () => {
@@ -156,6 +147,7 @@ window.farmDebug = function () {
   let panelVisible = false;
 
   function showPanel() {
+    panel.style.visibility = 'visible';
     panel.style.display = 'flex';
     // trigger transition on next frame
     requestAnimationFrame(() => {
@@ -172,7 +164,10 @@ window.farmDebug = function () {
     panel.style.transform = 'scale(0.92) translateY(12px)';
     panelVisible = false;
     setTimeout(() => {
-      if (!panelVisible) panel.style.display = 'none';
+      if (!panelVisible) {
+        panel.style.display = 'none';
+        panel.style.visibility = 'hidden';
+      }
     }, 220);
   }
 
@@ -245,9 +240,18 @@ window.farmDebug = function () {
 
   function mount() {
     if (!document.getElementById('farmcode-float-btn')) {
+      panel.style.display = 'none';
+      panel.style.visibility = 'hidden';
       document.body.appendChild(panel);
       document.body.appendChild(btn);
       document.body.appendChild(menu);
+
+      setTimeout(() => {
+        btn.style.setProperty('background-color', '#FFF8EE', 'important');
+        btn.style.setProperty('background', '#FFF8EE', 'important');
+        btn.style.setProperty('z-index', '2147483647', 'important');
+      }, 100);
+
       console.log('FarmCode float button mounted');
     }
   }

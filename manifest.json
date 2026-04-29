@@ -4,16 +4,16 @@
   "version": "1.0.0",
   "description": "Turn your LeetCode grind into a cozy farm adventure 🌾",
   "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
+    "16": "assets/crops/icon_larger.png",
+    "48": "assets/crops/icon_larger.png",
+    "128": "assets/crops/icon_larger.png"
   },
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
+      "16": "assets/crops/icon_larger.png",
+      "48": "assets/crops/icon_larger.png",
+      "128": "assets/crops/icon_larger.png"
     },
     "default_title": "FarmCode"
   },
@@ -43,6 +43,8 @@
         "farm/farm.html",
         "assets/farm_pic.png",
         "assets/crops/icon_float.png",
+        "assets/crops/icon_larger.png",
+        "assets/crops/icon_transparent.png",
         "assets/crops/seed.png",
         "assets/crops/seed_withered.png",
         "assets/crops/strawberry.png",
